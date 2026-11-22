@@ -291,9 +291,20 @@ final class AppModel {
     func open(cardID: UUID) {
         guard isLoaded else { deferredOpen = cardID; return }
         guard data.card(cardID) != nil else { return }
-        sheet = nil
         tab = .cards
-        presentedCardID = cardID
+        if sheet != nil {
+            sheet = nil
+            Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(500))
+                self?.presentedCardID = cardID
+            }
+        } else {
+            presentedCardID = cardID
+        }
+    }
+
+    private func present(_ s: AppSheet) {
+        if presentedCardID != nil { presentSheetAfterClosingCard(s) } else { sheet = s }
     }
 
     /// Closes the expanded card, then opens a sheet (two presentations at once would clash).
@@ -311,14 +322,12 @@ final class AppModel {
         case "card":
             if let id = UUID(uuidString: url.lastPathComponent) { open(cardID: id) }
         case "add":
-            presentedCardID = nil
             tab = .cards
-            sheet = .add
+            present(.add)
         case "join":
             if let invite = InviteLink(url: url) {
                 pendingInvite = invite
-                presentedCardID = nil
-                sheet = .family
+                present(.family)
             } else {
                 show("Invito non valido", icon: "exclamationmark.triangle.fill", style: .error)
             }
