@@ -131,6 +131,8 @@ public enum SyncEngine {
         public var unreadable = 0
 
         public var changedSomething: Bool { added + updated + removed > 0 }
+
+        public init() {}
     }
 
     /// Applies a server response: clears pending ids that were accepted

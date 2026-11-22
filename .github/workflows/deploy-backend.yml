@@ -1,0 +1,84 @@
+name: deploy-backend
+
+# Deploys the Tessere Worker to the user's Cloudflare account (manual run).
+#
+# Repository secrets:
+#   CLOUDFLARE_API_TOKEN   token with "Edit Cloudflare Workers" + "D1 Edit"
+#   CLOUDFLARE_ACCOUNT_ID
+#   ENROLL_KEY             any long random string (to register the first iPhone)
+#   PASS_P12_BASE64        optional: Pass Type ID certificate (.p12) in base64
+#   PASS_P12_PASSWORD      optional: its password
+# Repository variables:
+#   PASS_TYPE_ID           e.g. pass.com.yourname.tessere
+#   TEAM_ID                Apple Team ID (10 chars)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+
+      - name: Check configuration
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Secret CLOUDFLARE_API_TOKEN mancante"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Secret CLOUDFLARE_ACCOUNT_ID mancante"; exit 1; }
+
+      - name: D1 database (create if missing) + schema
+        run: |
+          set -euo pipefail
+          id=$(npx wrangler d1 list --json | jq -r '.[] | select(.name=="tessere-db") | .uuid')
+          if [ -z "$id" ]; then
+            npx wrangler d1 create tessere-db
+            id=$(npx wrangler d1 list --json | jq -r '.[] | select(.name=="tessere-db") | .uuid')
+          fi
+          sed -i "s/__D1_DATABASE_ID__/$id/" wrangler.toml
+          npx wrangler d1 execute tessere-db --remote --file schema.sql --yes
+
+      - name: Deploy
+        run: |
+          npx wrangler deploy \
+            --var PASS_TYPE_ID:"${{ vars.PASS_TYPE_ID }}" \
+            --var TEAM_ID:"${{ vars.TEAM_ID }}"
+
+      - name: Secrets
+        env:
+          ENROLL_KEY: ${{ secrets.ENROLL_KEY }}
+          PASS_P12_BASE64: ${{ secrets.PASS_P12_BASE64 }}
+          PASS_P12_PASSWORD: ${{ secrets.PASS_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "$ENROLL_KEY" ]; then printf '%s' "$ENROLL_KEY" | npx wrangler secret put ENROLL_KEY; fi
+          if [ -n "$PASS_P12_BASE64" ]; then
+            tmp=$(mktemp -d)
+            printf '%s' "$PASS_P12_BASE64" | base64 -d > "$tmp/pass.p12"
+            # Keychain exports can use legacy algorithms: try both modes.
+            openssl pkcs12 -in "$tmp/pass.p12" -clcerts -nokeys -passin env:PASS_P12_PASSWORD -out "$tmp/cert.pem" 2>/dev/null \
+              || openssl pkcs12 -legacy -in "$tmp/pass.p12" -clcerts -nokeys -passin env:PASS_P12_PASSWORD -out "$tmp/cert.pem"
+            openssl pkcs12 -in "$tmp/pass.p12" -nocerts -nodes -passin env:PASS_P12_PASSWORD -out "$tmp/key.pem" 2>/dev/null \
+              || openssl pkcs12 -legacy -in "$tmp/pass.p12" -nocerts -nodes -passin env:PASS_P12_PASSWORD -out "$tmp/key.pem"
+            curl -fsSL https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer -o "$tmp/wwdr.cer"
+            openssl x509 -inform DER -in "$tmp/wwdr.cer" -out "$tmp/wwdr.pem"
+            openssl x509 -in "$tmp/cert.pem" -noout -subject
+            npx wrangler secret put PASS_CERT_PEM < "$tmp/cert.pem"
+            npx wrangler secret put PASS_KEY_PEM < "$tmp/key.pem"
+            npx wrangler secret put WWDR_CERT_PEM < "$tmp/wwdr.pem"
+            rm -rf "$tmp"
+          fi
+
+      - name: Done
+        run: echo "Worker pubblicato su https://tessere.<tuo-sottodominio>.workers.dev (indirizzo nella dashboard Cloudflare › Workers)."

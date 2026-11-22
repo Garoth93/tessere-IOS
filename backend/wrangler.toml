@@ -1,0 +1,22 @@
+# Cloudflare Worker for Tessere. Deployed by .github/workflows/deploy-backend.yml
+# (or by hand: see README › Server). The D1 id is filled in by the workflow.
+name = "tessere"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tessere-db"
+database_id = "__D1_DATABASE_ID__"
+
+# Non-secret settings. PASS_TYPE_ID and TEAM_ID are set by the workflow from
+# GitHub variables (never committed). Secrets (wrangler secret put):
+#   ENROLL_KEY      key to register the first device of a family
+#   PASS_CERT_PEM   Pass Type ID certificate (PEM)
+#   PASS_KEY_PEM    its private key (PEM)
+#   PASS_KEY_PASSWORD  optional, if the key is encrypted
+#   WWDR_CERT_PEM   Apple WWDR G4 intermediate certificate (PEM)
+[vars]
+PASS_TYPE_ID = ""
+TEAM_ID = ""
