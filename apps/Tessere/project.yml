@@ -85,6 +85,9 @@ targets:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        # Portrait only: App Store validation (error 90474) requires full screen
+        # (no iPad multitasking) unless all four orientations are listed.
+        UIRequiresFullScreen: true
         UIApplicationSupportsIndirectInputEvents: true
         UIUserInterfaceStyle: Automatic
         ITSAppUsesNonExemptEncryption: false

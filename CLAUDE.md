@@ -188,7 +188,8 @@ Nella repo:
   `CODE_SIGN_STYLE=Automatic`, `CODE_SIGN_IDENTITY="Apple Development"`,
   `DEVELOPMENT_TEAM`), `ITSAppUsesNonExemptEncryption: false` nell'Info.plist,
   icona 1024 senza trasparenza, `MARKETING_VERSION` da alzare a mano per le
-  nuove versioni;
+  nuove versioni; se l'app è solo verticale serve `UIRequiresFullScreen: true`
+  (altrimenti l'upload è rifiutato con l'errore 90474 sulle orientazioni);
 - build number = `github.run_number` del workflow (sempre crescente).
 
 Come funziona: `xcodebuild archive` con firma automatica (crea al volo un
