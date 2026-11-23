@@ -37,6 +37,11 @@ targets:
   Tessere:
     type: application
     platform: iOS
+    # Tells Xcode's automatic signing which capabilities the App ID needs.
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS:
+          enabled: 1
     sources:
       - path: Sources
       - path: Shared
@@ -94,6 +99,10 @@ targets:
   TessereWidgets:
     type: app-extension
     platform: iOS
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS:
+          enabled: 1
     sources:
       - path: Widgets
       - path: Shared
