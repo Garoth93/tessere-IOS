@@ -76,14 +76,14 @@ jobs:
           grep -q "BEGIN PRIVATE KEY" "$key" || { echo "::error::ASC_KEY_P8 non è una chiave .p8 valida"; exit 1; }
           echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
 
-      - name: App ID capabilities (diagnostics)
+      - name: App ID capabilities and stale profiles
         continue-on-error: true
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           python3 -m pip install --quiet --break-system-packages "pyjwt[crypto]" 2>/dev/null || python3 -m pip install --quiet "pyjwt[crypto]"
-          python3 scripts/asc_bundle_ids.py com.garoth93.tessere com.garoth93.tessere.widgets
+          python3 scripts/asc_bundle_ids.py --delete-stale --group group.com.garoth93.tessere com.garoth93.tessere com.garoth93.tessere.widgets
 
       - name: Archive (automatic signing)
         working-directory: apps/${{ env.APP }}
