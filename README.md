@@ -4,9 +4,9 @@ App iOS nativa (Swift + SwiftUI) per tenere in tasca tessere fedeltà, buoni e
 biglietti: griglia di carte colorate con il logo del negozio, codice a schermo
 intero alla cassa, Apple Wallet, widget, offerte e condivisione in famiglia.
 
-Sviluppata senza Mac: compilata da GitHub Actions e installata sull'iPhone con
-Sideloadly (come Valigia, Ritorni, LTIDI…). Niente iCloud/CloudKit: la
-sincronizzazione passa da un piccolo server tuo (Worker Cloudflare gratuito).
+Sviluppata senza Mac: compilata e firmata da GitHub Actions e distribuita con
+**TestFlight** (Sideloadly resta come ripiego). La sincronizzazione in famiglia
+passa da un piccolo server tuo (Worker Cloudflare gratuito).
 
 ## Cosa c'è
 
@@ -47,14 +47,14 @@ sincronizzazione passa da un piccolo server tuo (Worker Cloudflare gratuito).
 
 ## Installare l'app
 
-1. **Actions** › workflow **build-ipa** › ultimo run verde › artifact
-   `Tessere-unsigned-ipa` (30 giorni).
-2. Sideloadly: trascina `Tessere-unsigned.ipa`, Apple ID, **Start**. Sull'iPhone:
-   Impostazioni › Generali › VPN e gestione dispositivo › Autorizza.
+**TestFlight** (normale): Actions › **testflight** › *Run workflow* (o un push su
+`main`). Il workflow firma, carica la build su App Store Connect e dopo 5-30
+minuti compare nell'app TestFlight dell'iPhone. Ogni due mesi parte da solo
+per rinnovare la build (TestFlight la fa scadere dopo 90 giorni).
 
-Account gratuito: firma di 7 giorni (rifirma lo stesso `.ipa`, i dati restano),
-app + widget usano 2 identificativi. In Impostazioni › Informazioni «Dati
-condivisi con i widget» dice se la firma ha incluso l'App Group.
+**Sideloadly** (ripiego): Actions › **build-ipa** › artifact
+`Tessere-unsigned-ipa`, poi Sideloadly con il tuo Apple ID. Con l'account
+gratuito la firma dura 7 giorni.
 
 ## Server (sync famiglia + Wallet)
 

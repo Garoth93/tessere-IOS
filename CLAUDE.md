@@ -3,7 +3,8 @@
 Repo di app iOS **native (Swift + SwiftUI)** personali, sviluppate senza Mac:
 il codice viene scritto su Linux (Claude Code) e compilato **solo** su GitHub
 Actions con runner macOS. Le app non vanno su App Store: l'utente scarica il
-`.ipa` non firmato dagli artifact e lo firma con Sideloadly/SideStore.
+app su **TestFlight** (account Apple a pagamento, firma automatica in CI);
+il `.ipa` non firmato per Sideloadly resta come ripiego.
 
 Stessa impostazione delle repo `Garoth93/ritorni-IOS`, `Garoth93/home-alarm-IOS`
 e `Garoth93/LTIDI-Last-Time-I-Did-It-IOS`.
@@ -22,7 +23,8 @@ e `Garoth93/LTIDI-Last-Time-I-Did-It-IOS`.
   (`Synthetic.swift`, nomi `... TEST`). I template di esempio
   (`SampleContent`) sono generici.
 - Dati locali; rete solo per loghi/volantini e per il Worker personale (sync cifrata, Wallet). Niente CloudKit/iCloud (installazione con Sideloadly).
-- Account Apple gratuito: nessuna firma in CI (`CODE_SIGNING_ALLOWED=NO`).
+- Firma solo in `testflight.yml` (automatica, chiave API App Store Connect).
+  Mai certificati, profili o `.p8` nella repo; Team ID solo nei secrets.
 - Non modificare impostazioni della repo o secrets: spiegare all'utente cosa
   configurare.
 
@@ -117,8 +119,44 @@ verificata con openssl). Segreti solo come secret del Worker/GitHub.
 | Workflow | Trigger | Cosa fa |
 |----------|---------|---------|
 | `build-simulator.yml` | push su ogni branch, PR, manuale | `xcodebuild build` per iOS Simulator, senza firma. Serve a vedere gli errori di compilazione. |
-| `build-ipa.yml` | push su `main` e `claude/**`, manuale | build Release per dispositivo con `CODE_SIGNING_ALLOWED=NO`, firma ad-hoc con gli `.entitlements` dell'app e del widget, impacchetta `Payload/<App>.app` in `<App>-unsigned.ipa` e lo carica come artifact (30 giorni). |
+| `build-ipa.yml` | push su `main` e `claude/**`, manuale | ripiego Sideloadly: build Release per dispositivo con `CODE_SIGNING_ALLOWED=NO`, firma ad-hoc con gli `.entitlements` dell'app e del widget, impacchetta `Payload/<App>.app` in `<App>-unsigned.ipa` e lo carica come artifact (30 giorni). |
 | `test-linux.yml` | push su ogni branch, PR, manuale | `swift test` su ogni package in `packages/`. |
+| `testflight.yml` | manuale, push su `main`, ogni 2 mesi (1° del mese) | archive firmato + export App Store + upload su TestFlight (vedi sotto). |
+| `test-backend.yml` / `deploy-backend.yml` | push su `backend/**` / manuale | test del Worker / deploy su Cloudflare. |
+
+### TestFlight (procedura riusabile per le altre app)
+
+Una volta per account (developer.apple.com / App Store Connect):
+
+1. App Store Connect › Utenti e accessi › Integrazioni › **chiave API** con
+   ruolo **Admin** (serve per creare certificati e profili e per la firma
+   cloud della distribuzione). Secrets della repo: `ASC_KEY_ID`,
+   `ASC_ISSUER_ID`, `ASC_KEY_P8` (testo del `.p8`, anche in base64),
+   `APPLE_TEAM_ID`.
+2. Per ogni app: scheda dell'app su App Store Connect con lo stesso bundle id
+   del `project.yml`. Gli App ID (app + `.widgets`), l'App Group e i profili
+   li crea/aggiorna xcodebuild con `-allowProvisioningUpdates`; le capability
+   "speciali" (es. iCloud con container) vanno abilitate a mano sull'App ID.
+
+Nella repo:
+
+- copiare `.github/workflows/testflight.yml` e `scripts/asc_revoke_certs.py`,
+  cambiare `APP:` nell'env del workflow;
+- `project.yml`: firma vuota (la imposta il workflow da riga di comando:
+  `CODE_SIGN_STYLE=Automatic`, `CODE_SIGN_IDENTITY="Apple Development"`,
+  `DEVELOPMENT_TEAM`), `ITSAppUsesNonExemptEncryption: false` nell'Info.plist,
+  icona 1024 senza trasparenza, `MARKETING_VERSION` da alzare a mano per le
+  nuove versioni;
+- build number = `github.run_number` del workflow (sempre crescente).
+
+Come funziona: `xcodebuild archive` con firma automatica (crea al volo un
+certificato di sviluppo sul runner, poi revocato dallo step finale per non
+accumularli), `-exportArchive` con `method=app-store-connect`,
+`destination=upload` (firma di distribuzione gestita nel cloud da Apple e
+upload diretto). La build compare in TestFlight dopo 5-30 minuti di
+elaborazione. TestFlight fa scadere le build dopo 90 giorni: la schedulazione
+ogni due mesi le rinnova (gira sul branch di default della repo).
+Log di archive/export nell'artifact `testflight-logs`.
 
 ### Come leggere i log di CI
 
