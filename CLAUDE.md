@@ -134,9 +134,14 @@ Una volta per account (developer.apple.com / App Store Connect):
    `ASC_ISSUER_ID`, `ASC_KEY_P8` (testo del `.p8`, anche in base64),
    `APPLE_TEAM_ID`.
 2. Per ogni app: scheda dell'app su App Store Connect con lo stesso bundle id
-   del `project.yml`. Gli App ID (app + `.widgets`), l'App Group e i profili
-   li crea/aggiorna xcodebuild con `-allowProvisioningUpdates`; le capability
-   "speciali" (es. iCloud con container) vanno abilitate a mano sull'App ID.
+   del `project.yml`. Gli App ID (app + `.widgets`) e i profili li
+   crea/aggiorna xcodebuild con `-allowProvisioningUpdates`, **ma l'API non
+   può assegnare App Group e container iCloud**: su developer.apple.com ›
+   Identifiers › ogni App ID (app **e** widget) › App Groups › *Configure* ›
+   spuntare `group.com.garoth93.<app>` (per l'app anche iCloud › *Configure* ›
+   il container). Altrimenti l'archive fallisce con "Provisioning profile …
+   doesn't match the entitlements file's value for …application-groups".
+   Lo step "App ID capabilities" del workflow stampa le capability attive.
 
 Nella repo:
 
