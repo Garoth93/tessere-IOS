@@ -145,6 +145,19 @@ jobs:
           echo "### TestFlight" >> "$GITHUB_STEP_SUMMARY"
           echo "Caricata la build **${{ github.run_number }}** di $APP. Dopo l'elaborazione (5-30 minuti) compare in TestFlight." >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Show the provisioning profiles Xcode used (on failure)
+        if: failure()
+        run: |
+          for dir in "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" "$HOME/Library/MobileDevice/Provisioning Profiles"; do
+            [ -d "$dir" ] || continue
+            for f in "$dir"/*; do
+              [ -f "$f" ] || continue
+              security cms -D -i "$f" > "$RUNNER_TEMP/p.plist" 2>/dev/null || continue
+              echo "== $(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/p.plist")"
+              /usr/libexec/PlistBuddy -c 'Print :Entitlements' "$RUNNER_TEMP/p.plist" | grep -v -E "keychain-access|get-task-allow|team-identifier" || true
+            done
+          done
+
       - name: Revoke the development certificate created by this run
         if: always()
         continue-on-error: true
