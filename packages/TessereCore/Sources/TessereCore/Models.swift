@@ -373,12 +373,14 @@ public struct TessereSettings: Codable, Equatable, Sendable {
     public var maxBrightness: Bool = true
     public var autoRotateLongCodes: Bool = true
     public var offersEnabled: Bool = true
+    /// Automatic backup in iCloud Drive (shared "Backup" container, "Tessere" folder).
+    public var cloudBackup: Bool = true
 
     public init() {}
 
     enum CodingKeys: String, CodingKey {
         case appearance, sortMode, faceID, expiryReminders, expiryLeadDays, reminderHour
-        case locationSuggestions, haptics, maxBrightness, autoRotateLongCodes, offersEnabled
+        case locationSuggestions, haptics, maxBrightness, autoRotateLongCodes, offersEnabled, cloudBackup
     }
 
     public init(from decoder: Decoder) throws {
@@ -395,6 +397,7 @@ public struct TessereSettings: Codable, Equatable, Sendable {
         maxBrightness = try c.decodeIfPresent(Bool.self, forKey: .maxBrightness) ?? d.maxBrightness
         autoRotateLongCodes = try c.decodeIfPresent(Bool.self, forKey: .autoRotateLongCodes) ?? d.autoRotateLongCodes
         offersEnabled = try c.decodeIfPresent(Bool.self, forKey: .offersEnabled) ?? d.offersEnabled
+        cloudBackup = try c.decodeIfPresent(Bool.self, forKey: .cloudBackup) ?? d.cloudBackup
     }
 }
 

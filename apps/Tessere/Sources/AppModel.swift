@@ -19,6 +19,7 @@ enum AppSheet: Identifiable, Equatable {
     case edit(UUID)
     case settings
     case family
+    case cloudRestore
 
     var id: String {
         switch self {
@@ -26,6 +27,7 @@ enum AppSheet: Identifiable, Equatable {
         case .edit(let id): return "edit-\(id.uuidString)"
         case .settings: return "settings"
         case .family: return "family"
+        case .cloudRestore: return "cloud-restore"
         }
     }
 }
@@ -120,6 +122,7 @@ final class AppModel {
         refreshDerived()
         let ids = Set(data.cards.map(\.id))
         Task.detached(priority: .background) { LogoStore.removeOrphans(keeping: ids) }
+        Task { await CloudBackupService.shared.offerRestoreIfNeeded() }
         if let id = deferredOpen {
             deferredOpen = nil
             open(cardID: id)
@@ -197,6 +200,7 @@ final class AppModel {
         Haptics.enabled = data.settings.haptics
         scheduleSave()
         refreshDerived(syncSoon: needsSync)
+        CloudBackupService.shared.schedule()
     }
 
     /// Device-local change (usage, offers, sync cursor): saved, not synced.
@@ -351,24 +355,32 @@ final class AppModel {
 
     // MARK: Backup
 
-    func makeBackup() -> Data? {
+    func makeBackupFile() -> BackupFile? {
+        guard isLoaded else { return nil }
         var logos: [UUID: Data] = [:]
         for c in data.cards where c.hasLogo {
             if let d = LogoStore.data(for: c.id) { logos[c.id] = d }
         }
-        return try? BackupFile(data: data, logos: logos, now: Date()).encoded()
+        return BackupFile(data: data, logos: logos, now: Date())
+    }
+
+    func makeBackup() -> Data? {
+        try? makeBackupFile()?.encoded()
     }
 
     func restore(from raw: Data) {
         do {
-            let backup = try BackupFile.decode(raw)
-            for (id, png) in backup.logoData { LogoStore.save(png, for: id) }
-            var count = 0
-            update { d in count = backup.merge(into: &d, now: Date()) }
-            logoRevision += 1
-            show("Backup ripristinato: \(ItalianFormat.plural(count, "carta", "carte"))")
+            restore(try BackupFile.decode(raw))
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
+    }
+
+    func restore(_ backup: BackupFile) {
+        for (id, png) in backup.logoData { LogoStore.save(png, for: id) }
+        var count = 0
+        update { d in count = backup.merge(into: &d, now: Date()) }
+        logoRevision += 1
+        show("Backup ripristinato: \(ItalianFormat.plural(count, "carta", "carte"))")
     }
 }

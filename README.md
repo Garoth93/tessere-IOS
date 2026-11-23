@@ -43,7 +43,10 @@ passa da un piccolo server tuo (Worker Cloudflare gratuito).
   un solo colore d'accento (teal acido), SF Rounded, Dynamic Type.
 - **Famiglia**: sincronizzazione tra i tuoi dispositivi e con i familiari,
   **cifrata end-to-end** (AES-GCM): il server vede solo id e date. Ogni carta
-  può restare «solo su questo iPhone». **Backup JSON** con i loghi.
+  può restare «solo su questo iPhone».
+- **Backup automatico su iCloud Drive** (app File › iCloud Drive › Backup ›
+  Tessere): un file al giorno quando le carte cambiano; ripristino dalle
+  Impostazioni o guidato al primo avvio. Resta anche l'export JSON manuale.
 
 ## Installare l'app
 

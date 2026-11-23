@@ -27,6 +27,8 @@ struct RootView: View {
                 SettingsView()
             case .family:
                 NavigationStack { FamilyView(isRoot: true) }
+            case .cloudRestore:
+                CloudRestoreView(firstLaunch: model.data.cards.isEmpty)
             }
         }
         .overlay(alignment: .top) { ToastView() }

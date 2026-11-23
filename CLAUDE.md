@@ -22,7 +22,9 @@ e `Garoth93/LTIDI-Last-Time-I-Did-It-IOS`.
   README. I test usano solo dati **sintetici** generati nel codice
   (`Synthetic.swift`, nomi `... TEST`). I template di esempio
   (`SampleContent`) sono generici.
-- Dati locali; rete solo per loghi/volantini e per il Worker personale (sync cifrata, Wallet). Niente CloudKit/iCloud (installazione con Sideloadly).
+- Dati locali; rete solo per loghi/volantini e per il Worker personale (sync
+  cifrata, Wallet). iCloud solo come **backup in iCloud Drive** (niente
+  CloudKit), vedi sotto.
 - Firma solo in `testflight.yml` (automatica, chiave API App Store Connect).
   Mai certificati, profili o `.p8` nella repo; Team ID solo nei secrets.
 - Non modificare impostazioni della repo o secrets: spiegare all'utente cosa
@@ -84,6 +86,41 @@ bianca) in App Group `Logos/`. App Group `group.com.garoth93.tessere`.
 Backend: `backend/` Worker Cloudflare + D1 (`schema.sql`), test
 `cd backend && npm install && npm test` (shim D1 su node:sqlite, firma
 verificata con openssl). Segreti solo come secret del Worker/GitHub.
+
+### Backup iCloud Drive (procedura riusabile per le altre app)
+
+Un solo container **condiviso** da tutte le app: `iCloud.com.garoth93.backup`,
+una sottocartella per app. In File appare come *iCloud Drive › Backup › <App>*.
+
+Una volta (developer.apple.com): Identifiers › iCloud Containers ›
+`iCloud.com.garoth93.backup`. Per ogni app: App ID dell'app (non del widget) ›
+iCloud (CloudKit/iCloud Documents) › *Configure* › spuntare il container.
+
+Nella repo, per ogni app:
+
+- `<App>.entitlements` (solo app, mai il widget):
+  `com.apple.developer.icloud-container-identifiers` e
+  `com.apple.developer.ubiquity-container-identifiers` = il container,
+  `com.apple.developer.icloud-services` = `CloudDocuments`;
+- `<App>.sideload.entitlements` = gli stessi senza iCloud: `build-ipa.yml` lo
+  preferisce per la firma ad-hoc (l'account gratuito non ha iCloud);
+- `project.yml`: `SystemCapabilities` `com.apple.iCloud` sul target app;
+  Info.plist `NSUbiquitousContainers` › `iCloud.com.garoth93.backup` con
+  `NSUbiquitousContainerIsDocumentScopePublic: true`,
+  `NSUbiquitousContainerName: Backup` (uguale in tutte le app),
+  `NSUbiquitousContainerSupportedFolderLevels: Any`; per il backup in
+  background `UIBackgroundModes: [fetch]` + `BGTaskSchedulerPermittedIdentifiers`;
+- file in `<container>/Documents/<App>/`: `<App>-backup-yyyy-MM-dd.json`
+  (uno al giorno, ultimi 30) + `<App>-backup-latest.json`, JSON con campo
+  `version`. Logica pura (nomi, pulizia, impronta del contenuto per non
+  riscrivere se nulla è cambiato) nel package (`CloudBackup.swift` di Tessere),
+  I/O nell'app (`CloudBackupService.swift`): `url(forUbiquityContainerIdentifier:)`
+  sempre fuori dal main thread, scritture/letture con `NSFileCoordinator`,
+  file non scaricati = segnaposto `.<nome>.icloud` (`startDownloadingUbiquitousItem`).
+- Quando: dopo le modifiche (8 s di attesa), all'uscita in background,
+  `BGAppRefreshTask` ogni ~6 h. Un'app vuota non sovrascrive mai i backup.
+- Ripristino: Impostazioni › Ripristina da iCloud, e guidato al primo avvio
+  se l'app è vuota e in iCloud c'è un backup (chiesto una volta sola).
 
 ## Convenzioni di codice
 

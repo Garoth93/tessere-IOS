@@ -8,6 +8,8 @@ struct SettingsView: View {
     @Environment(SyncService.self) private var sync
     @Environment(LocationService.self) private var location
     @Environment(AppLock.self) private var lock
+    @Environment(CloudBackupService.self) private var cloud
+    @State private var showCloudRestore = false
     @Environment(\.dismiss) private var dismiss
     @State private var exporting = false
     @State private var importing = false
@@ -115,6 +117,39 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle(isOn: binding(\.cloudBackup)) {
+                        Label("Backup automatico su iCloud", systemImage: "icloud.fill")
+                    }
+                    LabeledContent("Ultimo backup") {
+                        if cloud.isWorking {
+                            ProgressView()
+                        } else {
+                            Text(cloud.lastBackupAt.map { $0.formatted(.relative(presentation: .named).locale(Locale(identifier: "it_IT"))) } ?? "Mai")
+                        }
+                    }
+                    Button {
+                        Task {
+                            if await cloud.backup(force: true) { model.show("Backup salvato su iCloud", icon: "icloud.and.arrow.up.fill") }
+                        }
+                    } label: {
+                        Label("Esegui backup ora", systemImage: "icloud.and.arrow.up")
+                    }
+                    .disabled(cloud.isWorking || model.data.cards.isEmpty)
+                    Button {
+                        showCloudRestore = true
+                    } label: {
+                        Label("Ripristina da iCloud", systemImage: "icloud.and.arrow.down")
+                    }
+                    if let e = cloud.lastError {
+                        Text(e).font(.footnote).foregroundStyle(Theme.danger)
+                    }
+                } header: {
+                    Text("iCloud")
+                } footer: {
+                    Text("Un file al giorno (gli ultimi 30) più l'ultimo, quando le carte cambiano e quando chiudi l'app. Li trovi nell'app File › iCloud Drive › Backup › Tessere.")
+                }
+
+                Section {
                     Button {
                         if let data = model.makeBackup() {
                             backupDoc = BackupDocument(data: data)
@@ -129,7 +164,7 @@ struct SettingsView: View {
                         Label("Ripristina da backup", systemImage: "square.and.arrow.down")
                     }
                 } header: {
-                    Text("Backup")
+                    Text("Backup su file")
                 } footer: {
                     Text("File JSON con carte, note e loghi. Il ripristino aggiunge o aggiorna le carte, non cancella le altre.")
                 }
@@ -150,6 +185,9 @@ struct SettingsView: View {
             .fileExporter(isPresented: $exporting, document: backupDoc, contentType: .json,
                           defaultFilename: "tessere-backup-\(ItalianFormat.shortDay(Date()).replacingOccurrences(of: "/", with: "-"))") { result in
                 if case .success = result { model.show("Backup esportato") }
+            }
+            .sheet(isPresented: $showCloudRestore) {
+                CloudRestoreView(firstLaunch: false)
             }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 guard case .success(let url) = result else { return }

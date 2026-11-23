@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = notificationDelegate
+        CloudBackupService.registerBackgroundTask()
         MainActor.assumeIsolated {
             _ = AppModel.shared
             // Created at launch so region events (store nearby) are delivered
@@ -25,6 +26,7 @@ struct TessereApp: App {
     @State private var lock = AppLock.shared
     @State private var sync = SyncService.shared
     @State private var location = LocationService.shared
+    @State private var cloud = CloudBackupService.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -34,12 +36,17 @@ struct TessereApp: App {
                 .environment(lock)
                 .environment(sync)
                 .environment(location)
+                .environment(cloud)
                 .onOpenURL { model.handle(url: $0) }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background:
                 model.saveNow()
+                BackgroundWork.run("tessere-icloud-backup") {
+                    await CloudBackupService.shared.backup(force: false)
+                }
+                CloudBackupService.scheduleBackgroundRefresh()
                 lock.didEnterBackground()
                 ScreenBoost.suspend()
             case .inactive:

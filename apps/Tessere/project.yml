@@ -42,6 +42,10 @@ targets:
       SystemCapabilities:
         com.apple.ApplicationGroups.iOS:
           enabled: 1
+        com.apple.iCloud:
+          enabled: 1
+        com.apple.BackgroundModes:
+          enabled: 1
     sources:
       - path: Sources
       - path: Shared
@@ -91,6 +95,17 @@ targets:
         NSLocationWhenInUseUsageDescription: "Tessere usa la posizione per suggerirti la carta giusta quando sei in un negozio e per cercare i negozi vicini delle tue carte."
         NSLocationAlwaysAndWhenInUseUsageDescription: "Con l'accesso «Sempre» Tessere può avvisarti quando entri in un negozio di cui hai la carta, anche ad app chiusa. La posizione non lascia il tuo iPhone."
         TSAppGroup: group.com.garoth93.tessere
+        # Backups: shared iCloud container of all the apps, visible in Files as
+        # iCloud Drive › Backup (each app writes in its own sub-folder).
+        NSUbiquitousContainers:
+          iCloud.com.garoth93.backup:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: Backup
+            NSUbiquitousContainerSupportedFolderLevels: Any
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.garoth93.tessere.refresh
         CFBundleURLTypes:
           - CFBundleURLName: com.garoth93.tessere
             CFBundleURLSchemes:
